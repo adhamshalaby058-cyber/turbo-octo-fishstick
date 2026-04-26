@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Op-Amp Filter Designer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #0d1117;
+      --card:   #161b27;
+      --card2:  #1c2232;
+      --border: #252d40;
+      --text:   #e2e8f0;
+      --muted:  #64748b;
+      --lp:     #818cf8;
+      --hp:     #38bdf8;
+      --bp:     #4ade80;
+      --notch:  #fb923c;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 20px 24px 40px;
+    }
+
+    header { text-align: center; margin-bottom: 24px; }
+    header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: .03em; }
+    header p  { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 270px 1fr;
+      gap: 18px;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    @media (max-width: 680px) { .layout { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .section-title {
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .cg { margin-bottom: 16px; }
+
+    label {
+      display: block;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 12px;
+      font-size: .9rem;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input[type="number"]:focus { border-color: var(--lp); }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      padding: 5px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: .77rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .chip:hover { color: var(--text); }
+    .chip.active { color: #fff; border-color: transparent; }
+
+    .right-col { display: flex; flex-direction: column; gap: 16px; }
+
+    canvas {
+      display: block;
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    .comp-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 9px;
+    }
+
+    .comp-card {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 10px 13px;
+    }
+    .comp-name  { font-size: .72rem; color: var(--muted); font-weight: 600; margin-bottom: 3px; }
+    .comp-val   { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .comp-note  { font-size: .68rem; color: var(--muted); margin-top: 2px; }
+
+    .note-box {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--lp);
+      border-radius: 8px;
+      padding: 9px 13px;
+      font-size: .78rem;
+      color: var(--muted);
+      line-height: 1.55;
+      margin-top: 10px;
+    }
+    .warn-box {
+      background: rgba(251,146,60,.07);
+      border: 1px solid rgba(251,146,60,.25);
+      border-left: 3px solid var(--notch);
+      border-radius: 8px;
+      padding: 9px 13px;
+      font-size: .78rem;
+      color: #fdba74;
+      line-height: 1.55;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Op-Amp Filter Designer</h1>
+  <p>2nd-order active filter — Bode plot + component values</p>
+</header>
+
+<div class="layout">
+  <!-- Controls -->
+  <div class="panel">
+    <div class="section-title">Configuration</div>
+
+    <div class="cg">
+      <label>Filter Type</label>
+      <div class="chips" id="filter-chips">
+        <button class="chip active" data-f="lp">Low-Pass</button>
+        <button class="chip"        data-f="hp">High-Pass</button>
+        <button class="chip"        data-f="bp">Band-Pass</button>
+        <button class="chip"        data-f="notch">Notch</button>
+      </div>
+    </div>
+
+    <div class="cg" id="topo-group">
+      <label>Response</label>
+      <div class="chips" id="topo-chips">
+        <button class="chip active" data-t="butterworth">Butterworth</button>
+        <button class="chip"        data-t="chebyshev">Chebyshev 1dB</button>
+        <button class="chip"        data-t="bessel">Bessel</button>
+      </div>
+    </div>
+
+    <div class="cg">
+      <label id="freq-label">Cutoff Frequency (Hz)</label>
+      <input type="number" id="freq-in" value="1000" min="1" max="50000000" step="any">
+    </div>
+
+    <div class="cg" id="q-group" style="display:none">
+      <label>Quality Factor Q</label>
+      <input type="number" id="q-in" value="1" min="0.5" max="20" step="0.1">
+    </div>
+
+    <div class="cg" id="r-group">
+      <label>Reference Resistor (Ω)</label>
+      <input type="number" id="r-in" value="10000" min="100" max="10000000" step="any">
+    </div>
+  </div>
+
+  <!-- Right -->
+  <div class="right-col">
+    <div class="panel" style="padding:14px">
+      <div class="section-title">Bode Plot</div>
+      <canvas id="bode" height="380"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Component Values</div>
+      <div class="comp-grid" id="comp-grid"></div>
+      <div id="notes-area"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const S = { filter:'lp', topo:'butterworth', fc:1000, Q:0.7071, R:10000 };
+
+const Q_MAP  = { butterworth: 1/Math.SQRT2, chebyshev: 0.9565, bessel: 0.5774 };
+const ACCENT = { lp:'#818cf8', hp:'#38bdf8', bp:'#4ade80', notch:'#fb923c' };
+
+// ── Transfer function (normalized, u = ω/ω₀) ─────────────────────────────────
+function H(filter, u, Q) {
+  const dr = 1 - u*u, di = u/Q;
+  const dSq = dr*dr + di*di;
+  let mag, ph;
+  switch (filter) {
+    case 'lp':
+      mag = 1 / Math.sqrt(dSq);
+      ph  = -Math.atan2(di, dr);
+      break;
+    case 'hp':
+      mag = (u*u) / Math.sqrt(dSq);
+      ph  = Math.PI - Math.atan2(di, dr);
+      break;
+    case 'bp':
+      mag = (u/Q) / Math.sqrt(dSq);
+      ph  = Math.PI/2 - Math.atan2(di, dr);
+      break;
+    default: { // notch
+      const nr = 1 - u*u;
+      mag = Math.abs(nr) / Math.sqrt(dSq);
+      ph  = (nr >= 0 ? 0 : Math.PI) - Math.atan2(di, dr);
+    }
+  }
+  return { mag: Math.max(mag, 1e-12), phase: ph * 180/Math.PI };
+}
+
+// ── Component value helpers ───────────────────────────────────────────────────
+function fmtR(v) {
+  if (v >= 1e6) return (v/1e6).toPrecision(3) + ' MΩ';
+  if (v >= 1e3) return (v/1e3).toPrecision(3) + ' kΩ';
+  return v.toPrecision(3) + ' Ω';
+}
+function fmtC(v) {
+  if (v < 1e-9) return (v*1e12).toPrecision(3) + ' pF';
+  if (v < 1e-6) return (v*1e9).toPrecision(3)  + ' nF';
+  return (v*1e6).toPrecision(3) + ' µF';
+}
+
+function calcComponents(filter, fc, Q, R) {
+  const w0 = 2*Math.PI*fc;
+  let comps = [], notes = [], warns = [];
+
+  if (filter === 'lp' || filter === 'hp') {
+    // Sallen-Key, equal R, equal C
+    const C  = 1 / (w0 * R);
+    const K  = 3 - 1/Q;        // amplifier gain
+    const Rf = (K - 1) * R;    // feedback resistor (Rg = R)
+
+    if (K < 1) warns.push('K < 1: use a unity-gain (voltage-follower) op-amp stage and adjust C ratio instead.');
+
+    const swapped = filter === 'hp';
+    comps = [
+      { name: swapped ? 'C₁ = C₂' : 'R₁ = R₂', val: swapped ? fmtC(C) : fmtR(R),  note: 'equal pair' },
+      { name: swapped ? 'R₁ = R₂' : 'C₁ = C₂', val: swapped ? fmtR(R) : fmtC(C),  note: 'equal pair' },
+      { name: 'Gain K',  val: K.toPrecision(3),   note: '= 3 − 1/Q' },
+      { name: 'Rg',      val: fmtR(R),             note: 'to GND' },
+      { name: 'Rf',      val: Rf > 0 ? fmtR(Rf) : '0 Ω', note: 'feedback' },
+    ];
+    notes.push(
+      `Topology: Sallen-Key ${filter === 'lp' ? 'low-pass' : 'high-pass'} (equal R, equal C). Non-inverting. `
+      + `f₀ = 1/(2π·R·C), Q = 1/(3−K), K = 1 + Rf/Rg.`
+    );
+
+  } else if (filter === 'bp') {
+    // Multiple Feedback (MFB) bandpass
+    const C  = 10e-9;
+    let H0   = 1;
+    if (2*Q*Q < 1.05) {
+      H0 = Math.max(0.05, 2*Q*Q - 0.05);
+      warns.push(`MFB bandpass requires 2Q² > H₀. Midband gain reduced to ${H0.toPrecision(2)}.`);
+    }
+    const R1 = Q / (H0 * w0 * C);
+    const R2 = Q / ((2*Q*Q - H0) * w0 * C);
+    const R3 = 2*Q / (w0 * C);
+
+    comps = [
+      { name: 'C₁ = C₂', val: fmtC(C),   note: 'fixed 10 nF' },
+      { name: 'R₁',       val: fmtR(R1),  note: 'input' },
+      { name: 'R₂',       val: fmtR(R2),  note: 'shunt' },
+      { name: 'R₃',       val: fmtR(R3),  note: 'feedback' },
+      { name: '|H₀|',     val: H0.toPrecision(3), note: 'midband gain' },
+    ];
+    notes.push('Topology: Multiple Feedback (MFB). Inverting at center frequency. f₀ = 1/(2π·C·√(R₁R₃)), Q = (f₀·C·R₃)/2.');
+
+  } else {
+    // Twin-T notch (Q ≈ 0.25 passive)
+    const C  = 1 / (w0 * R);
+    comps = [
+      { name: 'R₁ = R₂', val: fmtR(R),     note: 'equal pair' },
+      { name: 'R₃',       val: fmtR(R/2),   note: 'R/2' },
+      { name: 'C₁ = C₂', val: fmtC(C),     note: 'equal pair' },
+      { name: 'C₃',       val: fmtC(2*C),   note: '2C' },
+      { name: 'Q',        val: '≈ 0.25',     note: 'passive Twin-T' },
+    ];
+    notes.push('Topology: Passive Twin-T notch + unity-gain buffer. Q is fixed at ~0.25. For higher Q, add positive feedback from output to the T junction (state-variable topology).');
+  }
+  return { comps, notes, warns };
+}
+
+// ── Canvas / Bode plot ────────────────────────────────────────────────────────
+const canvas = document.getElementById('bode');
+const ctx    = canvas.getContext('2d');
+
+function resize() {
+  canvas.width  = canvas.parentElement.clientWidth - 28;
+  canvas.height = 380;
+}
+
+function drawBode() {
+  const { filter, fc, Q } = S;
+  const W = canvas.width, H = canvas.height;
+  const accent = ACCENT[filter];
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Layout
+  const ml = 56, mr = 16, mt = 24, mb = 34;
+  const splitY  = Math.round(H * 0.52);
+  const magH    = splitY - mt - 6;
+  const phH     = H - splitY - 6 - mb;
+  const plotW   = W - ml - mr;
+
+  const fMin = fc / 100, fMax = fc * 100;
+  const lMin = Math.log10(fMin), lMax = Math.log10(fMax);
+
+  const fToX  = f  => ml + (Math.log10(f) - lMin)/(lMax - lMin) * plotW;
+  const dbToY = db => mt + (1 - (db - (-60))/(12 - (-60))) * magH;
+  const phToY = ph => splitY + 6 + (1 - (ph - (-195))/(195 - (-195))) * phH;
+
+  // Panel backgrounds
+  ctx.fillStyle = '#111827';
+  ctx.fillRect(ml, mt, plotW, magH);
+  ctx.fillRect(ml, splitY+6, plotW, phH);
+
+  // Grid - magnitude
+  ctx.strokeStyle = '#1e2a3a'; ctx.lineWidth = 1;
+  for (let db = -60; db <= 12; db += 10) {
+    const y = dbToY(db);
+    if (y < mt || y > mt+magH) continue;
+    ctx.beginPath(); ctx.moveTo(ml, y); ctx.lineTo(ml+plotW, y); ctx.stroke();
+    ctx.fillStyle = '#475569'; ctx.font = '9.5px monospace'; ctx.textAlign = 'right';
+    ctx.fillText(db+'dB', ml-5, y+3.5);
+  }
+  // 0 dB highlight
+  ctx.strokeStyle = '#2d3f52'; ctx.lineWidth = 1.5;
+  const y0 = dbToY(0);
+  ctx.beginPath(); ctx.moveTo(ml, y0); ctx.lineTo(ml+plotW, y0); ctx.stroke();
+
+  // Grid - phase
+  ctx.lineWidth = 1;
+  for (let ph = -180; ph <= 180; ph += 45) {
+    const y = phToY(ph);
+    if (y < splitY+6 || y > splitY+6+phH) continue;
+    ctx.strokeStyle = '#1e2a3a';
+    ctx.beginPath(); ctx.moveTo(ml, y); ctx.lineTo(ml+plotW, y); ctx.stroke();
+    ctx.fillStyle = '#475569'; ctx.font = '9.5px monospace'; ctx.textAlign = 'right';
+    ctx.fillText(ph+'°', ml-5, y+3.5);
+  }
+
+  // Grid - frequency (log decade + minor)
+  const d0 = Math.ceil(lMin), d1 = Math.floor(lMax);
+  for (let d = d0; d <= d1; d++) {
+    for (let m = 1; m <= 9; m++) {
+      const f = m * 10**d;
+      if (f < fMin || f > fMax) continue;
+      const x = fToX(f);
+      ctx.strokeStyle = m===1 ? '#253347' : '#192232';
+      ctx.lineWidth   = m===1 ? 1.2 : 0.6;
+      ctx.beginPath(); ctx.moveTo(x, mt); ctx.lineTo(x, mt+magH); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, splitY+6); ctx.lineTo(x, splitY+6+phH); ctx.stroke();
+      if (m === 1) {
+        const lbl = f>=1e6 ? (f/1e6)+'M' : f>=1e3 ? (f/1e3)+'k' : String(f);
+        ctx.fillStyle = '#475569'; ctx.font = '9px monospace'; ctx.textAlign = 'center';
+        ctx.fillText(lbl+' Hz', x, H - mb + 17);
+      }
+    }
+  }
+
+  // fc dashed line
+  const fcX = fToX(fc);
+  ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1.5;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(fcX, mt);       ctx.lineTo(fcX, mt+magH);        ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(fcX, splitY+6); ctx.lineTo(fcX, splitY+6+phH);  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // fc label
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.font = '9px monospace';
+  ctx.textAlign = fcX > W-80 ? 'right' : 'left';
+  const fcLbl = fc>=1e6 ? (fc/1e6).toPrecision(3)+'MHz' : fc>=1e3 ? (fc/1e3).toPrecision(3)+'kHz' : fc.toPrecision(3)+'Hz';
+  ctx.fillText('f₀='+fcLbl, fcX + (fcX > W-80 ? -5 : 5), mt+13);
+
+  // Panel sub-titles
+  ctx.fillStyle = '#334155'; ctx.font = '700 9px system-ui'; ctx.textAlign = 'left';
+  ctx.fillText('MAGNITUDE (dB)', ml+5, mt+12);
+  ctx.fillText('PHASE (°)',       ml+5, splitY+18);
+
+  // Compute curves
+  const N = 700;
+  const magPts = [], phPts = [];
+  for (let i = 0; i <= N; i++) {
+    const lf  = lMin + (lMax - lMin)*i/N;
+    const f   = 10**lf;
+    const u   = f/fc;
+    const { mag, phase } = H(filter, u, Q);
+    const db  = 20*Math.log10(mag);
+    const x   = ml + (lf-lMin)/(lMax-lMin)*plotW;
+    magPts.push([x, dbToY(Math.max(-60, Math.min(12, db)))]);
+    phPts.push([x, phToY(Math.max(-195, Math.min(195, phase)))]);
+  }
+
+  function drawCurve(pts) {
+    ctx.strokeStyle = accent; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+    ctx.shadowColor = accent; ctx.shadowBlur = 10;
+    ctx.beginPath();
+    pts.forEach(([x,y], i) => i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+  drawCurve(magPts);
+  drawCurve(phPts);
+
+  // Panel borders
+  ctx.strokeStyle = '#1e2a3a'; ctx.lineWidth = 1;
+  ctx.strokeRect(ml, mt, plotW, magH);
+  ctx.strokeRect(ml, splitY+6, plotW, phH);
+}
+
+// ── Render component cards ────────────────────────────────────────────────────
+function renderComps() {
+  const { filter, fc, Q, R } = S;
+  const effectiveQ = filter === 'notch' ? 0.25 : Q;
+  const { comps, notes, warns } = calcComponents(filter, fc, effectiveQ, R);
+  const accent = ACCENT[filter];
+
+  document.getElementById('comp-grid').innerHTML = comps.map(c => `
+    <div class="comp-card">
+      <div class="comp-name">${c.name}</div>
+      <div class="comp-val" style="color:${accent}">${c.val}</div>
+      ${c.note ? `<div class="comp-note">${c.note}</div>` : ''}
+    </div>`).join('');
+
+  document.getElementById('notes-area').innerHTML = [
+    ...warns.map(w => `<div class="warn-box">${w}</div>`),
+    ...notes.map(n => `<div class="note-box">${n}</div>`),
+  ].join('');
+
+  // Update note-box border color to accent
+  document.querySelectorAll('.note-box').forEach(el => el.style.borderLeftColor = accent);
+}
+
+// ── Sync state and re-render ──────────────────────────────────────────────────
+function update() {
+  if (S.filter === 'lp' || S.filter === 'hp') {
+    S.Q = Q_MAP[S.topo];
+  } else if (S.filter === 'notch') {
+    S.Q = 0.25;
+  }
+  // bp: S.Q comes from input
+  drawBode();
+  renderComps();
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+document.getElementById('filter-chips').addEventListener('click', e => {
+  const btn = e.target.closest('[data-f]');
+  if (!btn) return;
+  S.filter = btn.dataset.f;
+  document.querySelectorAll('[data-f]').forEach(b => b.classList.toggle('active', b===btn));
+
+  const isBP    = S.filter === 'bp';
+  const isLPHP  = S.filter === 'lp' || S.filter === 'hp';
+  document.getElementById('topo-group').style.display = isLPHP ? ''     : 'none';
+  document.getElementById('q-group').style.display    = isBP   ? ''     : 'none';
+  document.getElementById('r-group').style.display    = isBP   ? 'none' : '';
+  document.getElementById('freq-label').textContent   =
+    isLPHP ? 'Cutoff Frequency (Hz)' : 'Center Frequency (Hz)';
+
+  // Update chip active color
+  document.querySelectorAll('[data-f].active').forEach(b => {
+    b.style.background = ACCENT[S.filter];
+  });
+  update();
+});
+
+document.getElementById('topo-chips').addEventListener('click', e => {
+  const btn = e.target.closest('[data-t]');
+  if (!btn) return;
+  S.topo = btn.dataset.t;
+  document.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('active', b===btn));
+  update();
+});
+
+document.getElementById('freq-in').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  if (v > 0) { S.fc = v; update(); }
+});
+document.getElementById('q-in').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  if (v > 0) { S.Q = v; update(); }
+});
+document.getElementById('r-in').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  if (v > 0) { S.R = v; update(); }
+});
+
+// ── Chip accent colors on init ────────────────────────────────────────────────
+function initChipColors() {
+  document.querySelectorAll('[data-f].active').forEach(b => {
+    b.style.background = ACCENT[S.filter];
+  });
+  document.querySelectorAll('[data-t].active').forEach(b => {
+    b.style.background = ACCENT.lp;
+  });
+}
+
+// ── Topo chip color sync (always matches current filter) ──────────────────────
+document.getElementById('topo-chips').addEventListener('click', () => {
+  document.querySelectorAll('[data-t].active').forEach(b => {
+    b.style.background = ACCENT[S.filter];
+  });
+});
+document.getElementById('filter-chips').addEventListener('click', () => {
+  document.querySelectorAll('[data-t].active').forEach(b => {
+    b.style.background = ACCENT[S.filter];
+  });
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => { resize(); drawBode(); });
+resize();
+initChipColors();
+update();
+</script>
+</body>
+</html>
