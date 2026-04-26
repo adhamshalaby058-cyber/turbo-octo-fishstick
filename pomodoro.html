@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pomodoro Timer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --work:   #e74c3c;
+      --short:  #27ae60;
+      --long:   #2980b9;
+      --bg:     #1a1a2e;
+      --card:   #16213e;
+      --text:   #eaeaea;
+      --muted:  #8892a4;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      background: var(--card);
+      border-radius: 24px;
+      padding: 40px 48px;
+      width: min(420px, 95vw);
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+      text-align: center;
+    }
+
+    h1 { font-size: 1.4rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); margin-bottom: 28px; }
+
+    /* Mode tabs */
+    .modes {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 36px;
+    }
+    .mode-btn {
+      padding: 7px 18px;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .mode-btn:hover { color: var(--text); }
+    .mode-btn.active { color: var(--text); }
+
+    /* Ring */
+    .ring-wrap {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      margin: 0 auto 32px;
+    }
+    svg.ring {
+      transform: rotate(-90deg);
+      width: 220px; height: 220px;
+    }
+    .ring-bg { fill: none; stroke: #2a2a4a; stroke-width: 10; }
+    .ring-progress {
+      fill: none;
+      stroke-width: 10;
+      stroke-linecap: round;
+      transition: stroke-dashoffset .9s linear, stroke .4s;
+    }
+    .ring-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    #display {
+      font-size: 3.6rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+      line-height: 1;
+    }
+    #mode-label {
+      font-size: .8rem;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--muted);
+    }
+
+    /* Controls */
+    .controls { display: flex; gap: 16px; justify-content: center; margin-bottom: 28px; }
+    .btn {
+      padding: 13px 32px;
+      border-radius: 999px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .1s, opacity .2s;
+    }
+    .btn:active { transform: scale(.96); }
+    .btn-primary {
+      background: var(--accent, var(--work));
+      color: #fff;
+      min-width: 130px;
+    }
+    .btn-ghost {
+      background: #2a2a4a;
+      color: var(--muted);
+    }
+    .btn-ghost:hover { color: var(--text); }
+
+    /* Session dots */
+    .sessions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+    }
+    .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #2a2a4a;
+      transition: background .3s;
+    }
+    .dot.done { background: var(--work); }
+    .sessions-label { font-size: .75rem; color: var(--muted); margin-right: 4px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Pomodoro</h1>
+
+  <div class="modes">
+    <button class="mode-btn active" data-mode="work"   data-minutes="25">Focus</button>
+    <button class="mode-btn"        data-mode="short"  data-minutes="5">Short break</button>
+    <button class="mode-btn"        data-mode="long"   data-minutes="15">Long break</button>
+  </div>
+
+  <div class="ring-wrap">
+    <svg class="ring" viewBox="0 0 220 220">
+      <circle class="ring-bg" cx="110" cy="110" r="100"/>
+      <circle class="ring-progress" id="ring" cx="110" cy="110" r="100"/>
+    </svg>
+    <div class="ring-label">
+      <span id="display">25:00</span>
+      <span id="mode-label">Focus</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="start-btn">Start</button>
+    <button class="btn btn-ghost"   id="reset-btn">Reset</button>
+  </div>
+
+  <div class="sessions">
+    <span class="sessions-label">Sessions</span>
+    <span class="dot" id="d0"></span>
+    <span class="dot" id="d1"></span>
+    <span class="dot" id="d2"></span>
+    <span class="dot" id="d3"></span>
+  </div>
+</div>
+
+<script>
+  const COLORS = { work: '#e74c3c', short: '#27ae60', long: '#2980b9' };
+  const LABELS = { work: 'Focus', short: 'Short Break', long: 'Long Break' };
+
+  const circumference = 2 * Math.PI * 100; // r=100
+  const ring       = document.getElementById('ring');
+  const display    = document.getElementById('display');
+  const modeLabel  = document.getElementById('mode-label');
+  const startBtn   = document.getElementById('start-btn');
+  const resetBtn   = document.getElementById('reset-btn');
+  const modeBtns   = document.querySelectorAll('.mode-btn');
+  const dots       = [0,1,2,3].map(i => document.getElementById('d'+i));
+
+  ring.style.strokeDasharray  = circumference;
+  ring.style.strokeDashoffset = 0;
+
+  let mode      = 'work';
+  let totalSecs = 25 * 60;
+  let remaining = totalSecs;
+  let running   = false;
+  let interval  = null;
+  let sessions  = 0;
+
+  function fmt(s) {
+    const m = String(Math.floor(s / 60)).padStart(2,'0');
+    const sec = String(s % 60).padStart(2,'0');
+    return `${m}:${sec}`;
+  }
+
+  function setAccent(color) {
+    document.querySelector('.btn-primary').style.background = color;
+    ring.style.stroke = color;
+  }
+
+  function render() {
+    display.textContent = fmt(remaining);
+    const frac = remaining / totalSecs;
+    ring.style.strokeDashoffset = circumference * (1 - frac);
+  }
+
+  function selectMode(m, mins) {
+    if (running) stop();
+    mode = m;
+    totalSecs = mins * 60;
+    remaining = totalSecs;
+    modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+    modeLabel.textContent = LABELS[m];
+    setAccent(COLORS[m]);
+    document.title = `${fmt(remaining)} — ${LABELS[m]}`;
+    render();
+    startBtn.textContent = 'Start';
+  }
+
+  function tick() {
+    remaining--;
+    document.title = `${fmt(remaining)} — ${LABELS[mode]}`;
+    render();
+    if (remaining <= 0) {
+      stop();
+      onComplete();
+    }
+  }
+
+  function start() {
+    running = true;
+    interval = setInterval(tick, 1000);
+    startBtn.textContent = 'Pause';
+  }
+
+  function stop() {
+    running = false;
+    clearInterval(interval);
+    startBtn.textContent = 'Resume';
+  }
+
+  function reset() {
+    stop();
+    remaining = totalSecs;
+    render();
+    document.title = `${fmt(remaining)} — ${LABELS[mode]}`;
+    startBtn.textContent = 'Start';
+  }
+
+  function onComplete() {
+    if (mode === 'work') {
+      sessions = Math.min(sessions + 1, 4);
+      dots.forEach((d, i) => d.classList.toggle('done', i < sessions));
+      notify('Focus session complete!', 'Time for a break.');
+      if (sessions === 4) sessions = 0; // reset after full cycle
+    } else {
+      notify('Break over!', 'Ready to focus?');
+    }
+    startBtn.textContent = 'Start';
+    ring.style.strokeDashoffset = circumference;
+  }
+
+  function notify(title, body) {
+    if (Notification.permission === 'granted') {
+      new Notification(title, { body, icon: '' });
+    }
+    // Also flash the tab title
+    let flashes = 0;
+    const orig = document.title;
+    const flasher = setInterval(() => {
+      document.title = flashes % 2 === 0 ? '⏰ ' + title : orig;
+      if (++flashes > 8) { clearInterval(flasher); document.title = orig; }
+    }, 600);
+  }
+
+  // Request notification permission on first interaction
+  function maybeRequestNotification() {
+    if (Notification.permission === 'default') Notification.requestPermission();
+  }
+
+  startBtn.addEventListener('click', () => {
+    maybeRequestNotification();
+    running ? stop() : start();
+  });
+
+  resetBtn.addEventListener('click', reset);
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => selectMode(btn.dataset.mode, +btn.dataset.minutes));
+  });
+
+  // Init
+  setAccent(COLORS.work);
+  render();
+</script>
+</body>
+</html>
