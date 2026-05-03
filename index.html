@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sorry Shaan</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0f0f1a;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .message {
+      font-size: clamp(2rem, 6vw, 5rem);
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.2;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .message .name {
+      color: #ff6b6b;
+      display: block;
+    }
+
+    .message .cant {
+      color: #ffd93d;
+      display: block;
+    }
+
+    .message .reason {
+      color: #6bcb77;
+      display: block;
+      font-size: clamp(1.5rem, 4vw, 3.5rem);
+    }
+
+    .emoji {
+      font-size: clamp(3rem, 8vw, 7rem);
+      display: block;
+      margin-bottom: 1.5rem;
+      animation: bounce 1.5s ease-in-out infinite;
+    }
+
+    .subtext {
+      margin-top: 1.5rem;
+      color: #888;
+      font-size: clamp(0.9rem, 2vw, 1.2rem);
+      animation: fadeIn 1s ease 0.5s both;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* floating study particles */
+    .particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .particle {
+      position: absolute;
+      font-size: 1.5rem;
+      opacity: 0.15;
+      animation: float linear infinite;
+    }
+
+    @keyframes float {
+      0%   { transform: translateY(110vh) rotate(0deg); opacity: 0; }
+      10%  { opacity: 0.15; }
+      90%  { opacity: 0.15; }
+      100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="particles" id="particles"></div>
+
+  <div class="container">
+    <span class="emoji">📚</span>
+    <p class="message">
+      <span class="name">Shaan,</span>
+      <span class="cant">I can't —</span>
+      <span class="reason">I have finals.</span>
+    </p>
+    <p class="subtext">Maybe after exam season. Good luck out there.</p>
+  </div>
+
+  <script>
+    const symbols = ['📖', '✏️', '📝', '🖊️', '📐', '🔬', '💡', '☕', '🧠', '📊'];
+    const container = document.getElementById('particles');
+
+    for (let i = 0; i < 20; i++) {
+      const el = document.createElement('span');
+      el.className = 'particle';
+      el.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.animationDuration = (8 + Math.random() * 12) + 's';
+      el.style.animationDelay = (Math.random() * 15) + 's';
+      container.appendChild(el);
+    }
+  </script>
+</body>
+</html>
