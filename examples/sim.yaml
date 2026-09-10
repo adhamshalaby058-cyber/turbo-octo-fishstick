@@ -1,0 +1,77 @@
+# pyvisa-sim device definitions so the whole tool can be exercised without
+# real hardware attached. Point PyVISA at this file with the "@sim" backend,
+# e.g.:
+#
+#   visa-logger scan --backend "examples/sim.yaml@sim"
+#   visa-logger run examples/config.simulate.yaml
+#
+# See https://pyvisa-sim.readthedocs.io/ for the file format.
+spec: "1.1"
+
+devices:
+  scope-device:
+    eom:
+      GPIB INSTR:
+        q: "\n"
+        r: "\n"
+    dialogues:
+      - q: "*IDN?"
+        r: "Simulated,Oscilloscope,SIM-SCOPE-001,1.0"
+      - q: "*RST"
+      - q: "*CLS"
+      - q: "SYST:ERR?"
+        r: '+0,"No error"'
+      - q: "MEASure:VPP? CHANnel1"
+        r: "3.300000E+00"
+      - q: "MEASure:FREQuency? CHANnel1"
+        r: "1.000000E+03"
+      - q: "MEASure:VRMS? CHANnel2"
+        r: "1.170000E+00"
+
+  psu-device:
+    eom:
+      GPIB INSTR:
+        q: "\n"
+        r: "\n"
+    dialogues:
+      - q: "*IDN?"
+        r: "Simulated,PowerSupply,SIM-PSU-001,1.0"
+      - q: "*RST"
+      - q: "*CLS"
+      - q: "SYST:ERR?"
+        r: '+0,"No error"'
+      - q: "INSTrument:NSELect 1"
+      - q: "VOLTage 5"
+      - q: "CURRent 1"
+      - q: "OUTPut ON"
+      - q: "OUTPut OFF"
+      - q: "MEASure:VOLTage?"
+        r: "5.010000E+00"
+      - q: "MEASure:CURRent?"
+        r: "2.500000E-01"
+
+  siggen-device:
+    eom:
+      GPIB INSTR:
+        q: "\n"
+        r: "\n"
+    dialogues:
+      - q: "*IDN?"
+        r: "Simulated,SignalGenerator,SIM-GEN-001,1.0"
+      - q: "*RST"
+      - q: "*CLS"
+      - q: "SYST:ERR?"
+        r: '+0,"No error"'
+      - q: "SOURce1:FUNCtion SINE"
+      - q: "SOURce1:FREQuency 1000"
+      - q: "SOURce1:VOLTage 2"
+      - q: "OUTPut1 ON"
+      - q: "OUTPut1 OFF"
+
+resources:
+  GPIB::1::INSTR:
+    device: scope-device
+  GPIB::2::INSTR:
+    device: psu-device
+  GPIB::3::INSTR:
+    device: siggen-device

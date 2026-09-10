@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "visa-logger"
+version = "0.1.0"
+description = "PyVISA-based tool to control oscilloscopes, power supplies, and signal generators and auto-log measurements"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyvisa>=1.13",
+    "pyvisa-py>=0.7",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+sim = ["pyvisa-sim>=0.6"]
+test = ["pytest>=7.0", "pyvisa-sim>=0.6"]
+
+[project.scripts]
+visa-logger = "visa_logger.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["visa_logger*"]

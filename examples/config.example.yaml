@@ -1,0 +1,29 @@
+# Example auto-logging session: a scope channel plus a power supply rail,
+# sampled once a second for five minutes and appended to a CSV file.
+#
+# Run with:
+#   visa-logger run examples/config.example.yaml
+
+output: measurements.csv
+interval: 1.0        # seconds between samples
+duration: 300         # stop after this many seconds (omit to run until Ctrl+C)
+# backend: "@py"      # PyVISA backend; omit to use PyVISA's default (NI-VISA if installed)
+
+instruments:
+  - name: scope1
+    type: oscilloscope
+    resource: USB0::0x1AB1::0x0517::DS1ZA000000000::INSTR
+    reset: false
+    measurements:
+      - {label: ch1_vpp, type: vpp, channel: 1}
+      - {label: ch1_freq, type: freq, channel: 1}
+      - {label: ch2_vrms, type: vrms, channel: 2}
+
+  - name: psu1
+    type: power_supply
+    resource: TCPIP0::192.168.1.10::INSTR
+    channel: 1
+    measurements:
+      - {label: rail_voltage, type: voltage}
+      - {label: rail_current, type: current}
+      - {label: rail_power, type: power}
