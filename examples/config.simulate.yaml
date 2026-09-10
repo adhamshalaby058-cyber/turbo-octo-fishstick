@@ -1,0 +1,29 @@
+# Same shape as config.example.yaml, but points at the pyvisa-sim resources
+# defined in sim.yaml so the tool can be demoed with no hardware attached.
+#
+# Requires the 'sim' extra: pip install -e ".[sim]"
+#
+# Run with:
+#   visa-logger run examples/config.simulate.yaml --samples 5
+
+output: measurements.simulate.csv
+interval: 0.5
+backend: "examples/sim.yaml@sim"
+
+instruments:
+  - name: scope1
+    type: oscilloscope
+    resource: GPIB::1::INSTR
+    measurements:
+      - {label: ch1_vpp, type: vpp, channel: 1}
+      - {label: ch1_freq, type: freq, channel: 1}
+      - {label: ch2_vrms, type: vrms, channel: 2}
+
+  - name: psu1
+    type: power_supply
+    resource: GPIB::2::INSTR
+    channel: 1
+    measurements:
+      - {label: rail_voltage, type: voltage}
+      - {label: rail_current, type: current}
+      - {label: rail_power, type: power}
