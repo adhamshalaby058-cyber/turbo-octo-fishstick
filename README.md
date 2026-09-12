@@ -1,5 +1,7 @@
 # NutriSense
 
+**Live demo:** https://adhamshalaby058-cyber.github.io/turbo-octo-fishstick/
+
 An adaptive calorie, macronutrient and micronutrient tracker. It learns from what you
 log, calibrates your calorie target to your real metabolism, spots trends in your
 intake, and tells you exactly what to eat next, in grams, to hit your remaining
